@@ -203,9 +203,7 @@ class graph:
                         print(f"Select the weight on the edge from vertex {j} to vertex {k} ")
 
                         self.adjacencyMatrix[j][k] = float(input())
-    ##
-    ##  Function Description: 
-    ##
+
     def addEdge(self, source, sink, weight):
 
         self.edgeCount += 1
