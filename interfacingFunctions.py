@@ -7,6 +7,7 @@
 import numpy as np
 import matrixFunctions
 import graphs
+import pulp
 
 class linearProgram:
 
@@ -106,7 +107,7 @@ class linearProgram:
         for j in range(tempColumnCount):
             print(f"Please state the cost of variable {j}")
 
-            tempCostFunction[j] = float(input())
+            tempCostFunction[j] = float(eval(input()))
 
         print("State the number of constraints: ")
 
@@ -143,10 +144,10 @@ class linearProgram:
 
             for k in range(tempColumnCount):
                 print(f"Coefficient {k} is : ")
-                tempConstraintMatrix[j][k] = float(input())
+                tempConstraintMatrix[j][k] = float(eval(input()))
 
             print(f"State the right hand side of the same equation: ")
-            self.constraintVector[j] = float(input()) 
+            self.constraintVector[j] = float(eval(input())) 
 
         self.columnCount = tempColumnCount + len(geqRows) + len(leqRows)
 
@@ -210,7 +211,7 @@ class linearProgram:
 
                     print(f"State the demand at vertex {j}, \"{G.vertexNames[j]}\"")
 
-                    demandFunction[j] = float(input())
+                    demandFunction[j] = float(eval(input()))
 
                 upperBound = np.zeros(G.edgeCount)
 
@@ -226,11 +227,11 @@ class linearProgram:
 
                         print(f"State the upper bound for flow cross the edge ({j}, {edges[k]}), connected vertex {j}, {G.vertexNames[j]} to vertex {edges[k]}, {G.vertexNames[edges[k]]}")
 
-                        upperBound[index] = float(input())
+                        upperBound[index] = float(eval(input()))
 
                         print(f"State the lower bound for flow cross the edge ({j}, {edges[k]}), connected vertex {j}, {G.vertexNames[j]} to vertex {edges[k]}, {G.vertexNames[edges[k]]}")
                           
-                        lowerBound[index] = float(input())
+                        lowerBound[index] = float(eval(input()))
 
                         index += 1
 
@@ -309,7 +310,7 @@ class linearProgram:
 
                     print(f"State the demand at vertex {j}, \"{G.vertexNames[j]}\"")
 
-                    demandFunction[j] = float(input())
+                    demandFunction[j] = float(eval(input()))
 
                 upperBound = np.zeros(G.edgeCount)
 
@@ -323,7 +324,7 @@ class linearProgram:
 
                         print(f"State the upper bound for flow cross the edge ({j}, {edges[k]}), connected vertex {j}, {G.vertexNames[j]} to vertex {edges[k]}, {G.vertexNames[edges[k]]}")
 
-                        upperBound[index] = float(input())
+                        upperBound[index] = float(eval(input()))
 
                         index += 1
 
@@ -390,7 +391,7 @@ class linearProgram:
 
                     print(f"State the constraint on the flow accross the edge ({j}, {edges[k]}), between the edges connecting vertex {G.vertexNames[j]} to vertex {G.vertexNames[k]} (as a nonnegative real number):")
 
-                    capacity[index] = float(input())
+                    capacity[index] = float(eval(input()))
 
                     index += 1
 
@@ -432,11 +433,122 @@ class linearProgram:
 
             self.costFunction[G.edgeCount -1] = -1
 
-            self.sucessfullAllocation = True
+            self.sucessfullAllocation = True     
+
+    ##  
+    ##  Function Description: This function will create the LP for the currency exchange problem (or for any problem analagous).
+    ##  
+    def createCurrencyExchange(self, G :graphs.graph):
+
+        index = 0
+
+        capacity = np.zeros(G.edgeCount)
+
+        for j in range(G.vertexCount):
+
+            edges = G.edgeSet[j]
+
+            for k in range(len(edges)):
+
+                print(f"State the constraint on the flow accross the edge ({j}, {edges[k]}), between the edges connecting vertex {G.vertexNames[j]} to vertex {G.vertexNames[edges[k]]} (as a nonnegative real number):")
+
+                capacity[index] = float(eval(input()))
+
+                index += 1
+
+        print(G.edgeSet)
+
+        print("Which of these vertices is to be the sink node?")
+
+        sink = int(input())
+
+        print("Which of these vertices is to be the source")
+
+        source = int(input())
+
+        G.addEdge(sink, source, 1)
+
+        ##  
+        ##  You should now have enough to create the linear program. 
+        ##  
+
+        for j in range(G.vertexCount):
+            for k in range(G.vertexCount):
+                if not G.adjacencyMatrix[j][k] == 0:
+
+                    for l in range(G.edgeCount):
+                        if G.incidenceMatrix[j][l] > 0 and G.incidenceMatrix[k][l] < 0:
+                            
+                            G.incidenceMatrix[j][l] = G.adjacencyMatrix[j][k]
+
+                            G.incidenceMatrix[k][l] = -1*G.adjacencyMatrix[j][k] 
+
+        self.constraintMatrix = np.zeros((G.vertexCount + G.edgeCount, 2* G.edgeCount))
+
+        for j in range(len(G.incidenceMatrix)):
+            for k in range(len(G.incidenceMatrix[0])):
+
+                self.constraintMatrix[j][k] = G.incidenceMatrix[j][k]
+
+        for j in range(G.edgeCount - 1):
+            self.constraintMatrix[j + G.vertexCount][j] = self.constraintMatrix[j + G.vertexCount][j + G.edgeCount] = 1
 
 
-            
-              
+        self.constraintVector = np.zeros(len(self.constraintMatrix))
+        ##
+        ##  We only have capacities defined for edges prior to the connecting between the sink and source, which
+        ##  has already happened. If we do not subtract one here we will get an off by one error. 
+        ##
+        for j in range(G.edgeCount - 1):
+
+            self.constraintVector[j + G.vertexCount] = capacity[j]
+
+        self.costFunction = np.zeros(len(self.constraintMatrix[0]))
+
+        self.costFunction[G.edgeCount -1] = -1
+
+        self.sucessfullAllocation = True     
+
+
+##
+##  Function description: This function uses pulp to solve a currency exchange problem
+##
+def solveCurrencyExchange(program : linearProgram):
+
+    ##
+    ##  Problem definition
+    ##
+    prob = pulp.LpProblem("Currency_Exchange", pulp.LpMinimize)
+
+    ##
+    ##  define decission variables:
+    ##
+    x = [pulp.LpVariable(f"x{i}", lowBound = 0, cat = "pulp.LpContinuous") for i in range(program.rowCount)]
+
+
+    ##
+    ##  Defining objective function
+    ##
+    prob += pulp.lpSum(program.costFunction[j] * x[j] for j in range(program.rowCount)), "Total Cost"
+
+    ##
+    ##  Constraints Ax = b
+    ##
+    for j in range(program.columnCount):
+        prob += pulp.lpSum(program.constraintMatrix[j][k] * x[k] for k in range(len(x))) == program.constraintVector[j], f"Resource_{j}"
+
+    ##
+    ##  Solve:
+    ##
+    prob.solve()
+
+    ##
+    ##  Results:
+    ##
+    print(f"Status: {pulp.LpStatus[prob.status]}")
+    print(f"Optimal x:", [x[j].varValue for j in range(program.columnCount)])
+    print(f"Optimal Cost: ", pulp.value(prob.objective))
+
 
 
 
@@ -478,7 +590,7 @@ def createMatrixFromUserInput():
     for i in range(rowCount):
         for j in range(columnCount):
             print(f"Write the coefficient at row {i} and at column {j} of this matrix")
-            matrix[i][j] = float(input())
+            matrix[i][j] = float(eval(input()))
 
     return matrix
 
@@ -503,7 +615,7 @@ def createMatrixFromUserInput(rowCount, columnCount):
         for i in range(rowCount):
             for j in range(columnCount):
                 print(f"Write the coefficient at row {i} and at column {j} of this matrix")
-                matrix[i][j] = float(input())
+                matrix[i][j] = float(eval(input()))
 
     return matrix
 
@@ -527,7 +639,7 @@ def createVector(length):
 
     for j in range(length):
         print(f"Write coefficient {j} of the vector")
-        returnVector[j] = float(input())
+        returnVector[j] = float(eval(input()))
 
     return returnVector
 

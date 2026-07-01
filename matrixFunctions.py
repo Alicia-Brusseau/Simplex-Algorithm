@@ -10,9 +10,6 @@ import interfacingFunctions
 ##  program as well as a basis and returns the basis matrix corresponding to
 ##  a BFS and returns the corresponding basis matrix.
 ##  
-##  Preconditions: 
-##
-##  Postconditions: 
 ##
 def createBasisMatrix(basis, constraints):
     if len(basis) >= len(constraints[0]):
@@ -43,11 +40,6 @@ def createBasisMatrix(basis, constraints):
 
     return basisMatrix
 
-
-##
-##  Untested:
-##
-
 ##  
 ##  Function Description: This function takes, as its arguments, a basis matrix 
 ##  (basisMatrix), a constraint matrix which the basisMatrix is from (constraints),  
@@ -76,11 +68,6 @@ def findBasisRestrictedDirectionVector(basisMatrix, constraints, columnIndex):
             columnVector[j] = constraints[j][columnIndex]
 
     return np.matmul(np.linalg.inv(basisMatrix), columnVector)
-
-
-##
-##  Untested
-##
 
 ##
 ##  Function Description: This function takes a basis matrix, a matrix of constraints,
@@ -146,34 +133,9 @@ def findMinimalRatio(basisRestrictedSolution, basisRestrictedDirectionVector):
 
 
 ##  
-##  I think I will start from scratch here. I want the indices of the basis to be 
-##  kept in order. I also want the indices of the basis and the indices not in the  
-##  basis to be tracked the entire way through the execution of this algorithm. 
+##  Function Description: This function performs the standard simplex method using Blands rule for 
+##  cycle avoidance. 
 ##
-
-##  
-##  This function takes a linear program in standard form and performs the standard
-##  simplex method on it. It returns the optimal solution to the linear program if   
-##  it is finite, along with True, and returns the final direction vector if the 
-##  solution is unbounded, along with False.
-##
-##  Precondtion: A standard form linear program, along with an initial basic feasible
-##  solution, are used to call the function. The initial BFS, constraintMatrix, and 
-##  constraintVector are all numpy arrays. No error checking is done within this  
-##  function to ensure that the linear program is in standard form or that the feasible
-##  region is non-empty.
-##
-##  Postcondition: The optimal BFS is returned along with True if it exists. The final
-##  direction vector along with False is returned otherwise. 
-##
-
-
-##  
-##  
-##  This will be the standard version of the standard simplex method. I will also 
-##  create a version of the standard simplex method that prints at each step in the 
-##  agorithm. 
-##  
 def standardSimplexMethod(initialBFS, initialBasis, constraintMatrix, constraintVector, costFunction):
 
     ##  
@@ -230,22 +192,14 @@ def standardSimplexMethod(initialBFS, initialBasis, constraintMatrix, constraint
 
             else:
                 ##  
-                ##  Unbounded solution: You must also return the direction vector 
-                ##  and where you are directioning from, but that can come later.   
-                ##
-                ##  
-                ##  It is now later: fuck, what do I do?
-                ##  
-                ##  Actually, this is probably fine as is. I'll just need to   
-                ##  test it. 
+                ##  Unbounded solution:    
                 ##
                 return (False, bfs, basis, unitDirectionVector)
 
 
 
             ##  
-            ##  Create new BFS here. I'm worried I might cause a deep/shalow copy
-            ##  error here by mistake.   
+            ##  Create new BFS here.  
             ##
 
             directionVector = np.zeros(len(initialBFS))
@@ -296,7 +250,7 @@ def standardSimplexMethod(initialBFS, initialBasis, constraintMatrix, constraint
     
 ##  
 ##  
-##  Debugging version of the above code. This does the same thing as the standard simplex
+##  Debugging version of the standard simplex method algorithm. This does the same thing as the standard simplex
 ##  method algorithm except for that it prints at each step along the way. 
 ##  
 def standardSimplexMethodPrint(initialBFS, initialBasis, constraintMatrix, constraintVector, costFunction):
@@ -864,6 +818,9 @@ def simplexPhaseOne(program : interfacingFunctions.linearProgram):
 
             basicFeasibleSolution[j + program.columnCount] = -1*program.constraintVector[j]
 
+            for k in range(len(program.constraintMatrix[0])):
+                tempMatrix[j][k] *= -1
+
     basis = []
 
     for j in range(program.columnCount, len(costFunction)):
@@ -874,6 +831,745 @@ def simplexPhaseOne(program : interfacingFunctions.linearProgram):
     ##
     ##  you still need the basis. 
     ##
-    (basicFeasibleSolution, costOrDireciton, status) = simplexTableauWithBlandsRule(basis, basicFeasibleSolution, tempMatrix, costFunction)
+    (basicFeasibleSolution, costOrDireciton, status, basis) = simplexTableauWithBlandsRuleBasis(basis, basicFeasibleSolution, tempMatrix, costFunction)
 
-    return (basicFeasibleSolution, costOrDireciton, status)
+    return (basicFeasibleSolution, costOrDireciton, status, basis)
+
+##
+##  Function Description: This function performs the simplex tableau version of the simplex
+##  algorithm.
+##
+##
+##  Note: For whatever reason this code does not work on some graphs. I have only found it to not work on graphs.
+##  specifically, it does not work on the graph from figure 2. 
+##
+def simplexTableauWithBlandsRuleBasis(basis, basicFeasibleSolution, constraintMatrix, costFunction):
+    
+    BFS = basicFeasibleSolution.copy()
+
+    dimension = len(BFS)
+
+    nonBasicVariables = []
+
+    for j in range(dimension):
+        if not j in basis:
+
+            nonBasicVariables.append(j)
+
+    tableau = createTableau(basis, BFS, constraintMatrix, costFunction)
+
+    reducedCost = 0
+
+    ratios = [] 
+
+    leaveIndex = -1
+
+    enterIndex = -1
+
+    while True:
+        ##
+        ##  Check if the solution is optimal 
+        ##
+        reducedCost = np.inf
+
+        for j in range(len(basicFeasibleSolution)):
+            if tableau[1][j + 2] < 0 and reducedCost >= 0:
+                reducedCost = tableau[1][j + 2]  
+
+                enterIndex = j
+        ##
+        ##  What is returned if this is the optimal solution. 
+        ##
+        if reducedCost >= 0:
+            return (BFS, np.matmul(costFunction, BFS), True, basis)
+        
+        else:
+
+            ##
+            ##  Create the direction vector
+            ##
+            basisReducedDirectionVector = np.zeros(len(basis))
+
+            for j in range(len(basisReducedDirectionVector)):
+
+                basisReducedDirectionVector[j] = tableau[2 + j][enterIndex+2]
+
+            ##  
+            ##  Check if the solution is unbounded
+            ##  
+
+            isUnbounded = True
+
+            for j in range(len(basisReducedDirectionVector)):
+                if basisReducedDirectionVector[j] > 0:
+                    isUnbounded = False
+            
+            ##
+            ##  What is returned if the solution is unbounded. 
+            ##
+            if isUnbounded == True:
+
+                directionVector = np.zeros(len(BFS))
+
+                for j in range(len(basis)):
+
+                    directionVector[basis[j]] = basisReducedDirectionVector[j]
+
+                return (BFS, directionVector, False, basis)
+
+            ##
+            ##  Find the index to leave the basis
+            ##
+            minimumRatio = np.inf
+
+            for j in range(len(basis)):
+
+                ratios.append(BFS[basis[j]]/basisReducedDirectionVector[j])
+                if BFS[basis[j]]/basisReducedDirectionVector[j] < minimumRatio and basisReducedDirectionVector[j] > 0:
+                    minimumRatio = BFS[basis[j]]/basisReducedDirectionVector[j]
+
+                    leaveIndex = j
+            ##
+            ##  Update the tableau
+            ##
+            tableau = reduceTableau(tableau, leaveIndex + 2, enterIndex + 2)
+            
+            ##
+            ##  Update the basis
+            ##
+            for j in range(len(basis)):
+
+                if tableau[j + 2][0] == basis[leaveIndex]:
+                    tableau[j + 2][0] = enterIndex
+
+            for j in range(len(basis)):
+                if j == leaveIndex:
+                    basis[j] = enterIndex
+            for j in range(len(nonBasicVariables)):
+                if nonBasicVariables[j] == enterIndex:
+                    nonBasicVariables[j] = enterIndex
+
+            ##
+            ##  Update the basis
+            ##
+            BFS = np.zeros(len(BFS))
+
+            for j in range(len(basis)):
+                BFS[int(tableau[j + 2][0])] = tableau[j + 2][1]
+
+##
+##  Function Description: This function is intended to perform phase one of the simplex method: 
+##
+def simplexPhaseOneDebug(program : interfacingFunctions.linearProgram):
+
+    tempMatrix = np.zeros((program.rowCount, program.columnCount + program.rowCount), dtype = float)
+
+    basicFeasibleSolution = np.zeros(program.columnCount + program.rowCount, dtype=float)
+
+    costFunction = np.zeros(program.columnCount + program.rowCount, dtype=float)
+
+    for j in range(program.rowCount):
+        for k in range(program.columnCount):
+            tempMatrix[j][k] = program.constraintMatrix[j][k]
+
+        if program.constraintVector[j] >= 0:
+            tempMatrix[j][j + program.columnCount] = 1
+
+            basicFeasibleSolution[j + program.columnCount] = program.constraintVector[j]
+
+        else:
+            tempMatrix[j][j + program.columnCount] = -1
+
+            basicFeasibleSolution[j + program.columnCount] = -1*program.constraintVector[j]
+
+            for k in range(len(program.constraintMatrix[0])):
+                tempMatrix[j][k] *= -1
+
+    basis = []
+
+    for j in range(program.columnCount, len(costFunction)):
+        costFunction[j] = 1
+
+        basis.append(j)
+
+    ##
+    ##  you still need the basis. 
+    ##
+    (basicFeasibleSolution, costOrDireciton, status, basis) = simplexTableauWithBlandsRuleBasisDebug(basis, basicFeasibleSolution, tempMatrix, costFunction)
+
+    return (basicFeasibleSolution, costOrDireciton, status, basis)
+
+##
+##  Function Description: This function performs the simplex tableau version of the simplex
+##  algorithm.
+##
+##  Precondition: 
+##
+##  Postcondition: 
+##
+def simplexTableauWithBlandsRuleBasisDebug(basis, basicFeasibleSolution, constraintMatrix, costFunction):
+    
+    BFS = basicFeasibleSolution.copy()
+
+    print("The First BFS is")
+
+    print(BFS)
+
+    dimension = len(BFS)
+
+    nonBasicVariables = []
+
+    for j in range(dimension):
+        if not j in basis:
+
+            nonBasicVariables.append(j)
+
+    tableau = createTableau(basis, BFS, constraintMatrix, costFunction)
+
+    print("corresponding tableau:")
+
+    print(tableau)
+
+    reducedCost = 0
+
+    ratios = [] 
+
+    leaveIndex = -1
+
+    enterIndex = -1
+
+    while True:
+        ##
+        ##  Check if the solution is optimal 
+        ##
+        reducedCost = np.inf
+
+        for j in range(len(basicFeasibleSolution)):
+            if tableau[1][j + 2] < 0 and reducedCost >= 0:
+                reducedCost = tableau[1][j + 2]  
+
+                enterIndex = j
+        ##
+        ##  What is returned if this is the optimal solution. 
+        ##
+        if reducedCost >= 0:
+            return (BFS, np.matmul(costFunction, BFS), True, basis)
+        
+        else:
+
+            print("Index entering basis:")
+            print(enterIndex)
+
+            ##
+            ##  Create the direction vector
+            ##
+            basisReducedDirectionVector = np.zeros(len(basis))
+
+            for j in range(len(basisReducedDirectionVector)):
+
+                basisReducedDirectionVector[j] = tableau[2 + j][enterIndex+2]
+
+            ##  
+            ##  Check if the solution is unbounded
+            ##  
+
+            isUnbounded = True
+
+            for j in range(len(basisReducedDirectionVector)):
+                if basisReducedDirectionVector[j] > 0:
+                    isUnbounded = False
+
+            print("Direction Vector: ")
+            
+            
+            ##
+            ##  What is returned if the solution is unbounded. 
+            ##
+            if isUnbounded == True:
+
+                directionVector = np.zeros(len(BFS))
+
+                for j in range(len(basis)):
+
+                    directionVector[basis[j]] = basisReducedDirectionVector[j]
+
+                return (BFS, directionVector, False, basis)
+            
+            print(basisReducedDirectionVector)
+
+            ##
+            ##  Find the index to leave the basis
+            ##
+            minimumRatio = np.inf
+
+            for j in range(len(basis)):
+
+                ratios.append(BFS[basis[j]]/basisReducedDirectionVector[j])
+                if BFS[basis[j]]/basisReducedDirectionVector[j] < minimumRatio and basisReducedDirectionVector[j] > 0:
+                    minimumRatio = BFS[basis[j]]/basisReducedDirectionVector[j]
+
+                    leaveIndex = j
+            ##
+            ##  Update the tableau
+            ##
+            tableau = reduceTableau(tableau, leaveIndex + 2, enterIndex + 2)
+            
+            ##
+            ##  Update the basis
+            ##
+            for j in range(len(basis)):
+
+                if tableau[j + 2][0] == basis[leaveIndex]:
+                    tableau[j + 2][0] = enterIndex
+
+            for j in range(len(basis)):
+                if j == leaveIndex:
+                    basis[j] = enterIndex
+            for j in range(len(nonBasicVariables)):
+                if nonBasicVariables[j] == enterIndex:
+                    nonBasicVariables[j] = enterIndex
+
+            print("New Tableau:")
+
+            print(tableau)
+
+            ##
+            ##  Update the basis
+            ##
+            BFS = np.zeros(len(BFS))
+
+            for j in range(len(basis)):
+                BFS[int(tableau[j + 2][0])] = tableau[j + 2][1]
+
+            print("New Basis:")
+
+            print(basis)
+
+##  
+##  Function Description: This function performs the revised simplex algorithm. 
+## 
+##
+##
+##  This does not work because at the last pivot the interpreter decides to reinterpret some variables as 
+##  integers rather than floats. I don't know what is causing this to happen and every method I have tried
+##  to explicity cast a type has failed. I will, in the very near future, fix this by rewritting this 
+##  entire program in a language that doesn't decide types of its own volition.  
+##
+def revisedSimplexWithBlandsRule(constraintMatrix, costFunction, basis, basicFeasibleSolution):
+    basisMatrix = np.zeros((len(constraintMatrix), len(basis)))
+
+    for j in range(len(constraintMatrix)):
+        for k in range(len(basis)):
+
+            basisMatrix[j][k] = constraintMatrix[j][basis[k]]
+
+    basisFeasibleSolution = np.zeros(len(basis))
+
+    basisCost = np.zeros(len(basis))
+
+    for j in range(len(basis)):
+
+        basisFeasibleSolution[j] = basicFeasibleSolution[basis[j]]
+
+        basisCost[j] = costFunction[basis[j]]
+
+    inverseBasisMatrix = np.linalg.inv(basisMatrix)
+
+    priceVector = np.matmul(basisCost, inverseBasisMatrix)
+
+    reducedCosts= np.zeros(len(costFunction))
+
+    columnVector = np.zeros(len(constraintMatrix))
+
+    for j in range(len(costFunction)):
+
+        for k in range(len(constraintMatrix)):
+
+            columnVector[k] = constraintMatrix[k][j]
+
+        reducedCosts[j] = costFunction[j] - np.matmul(priceVector, columnVector)
+
+    solutionOptimal = True
+
+    enterIndex = -1
+
+    for j in range(len(reducedCosts)):
+
+        if reducedCosts[j] < 0:
+
+            enterIndex = j
+
+            solutionOptimal = False
+
+    if solutionOptimal:
+
+        return (basicFeasibleSolution, np.matmul(costFunction, basicFeasibleSolution), solutionOptimal)
+    ##
+    ##  Literally all of the rest of the algorithm will be done in here. 
+    ##
+    else:
+
+        newBasicFeasibleSolution = basicFeasibleSolution.copy()
+
+        while not solutionOptimal:
+
+            for j in range(len(constraintMatrix)):
+
+                columnVector[j] = constraintMatrix[j][enterIndex]
+
+            basisDirectionVector = np.matmul(inverseBasisMatrix, columnVector)
+
+            for j in range(len(basis)):
+                basisDirectionVector[j] *= -1
+
+            solutionUnbounded = True
+
+            for j in range(len(basisDirectionVector)):
+
+                if basisDirectionVector[j] < 0:
+
+                    solutionUnbounded = False
+
+            if solutionUnbounded:
+                ##
+                ##  This is where I will return unbounded solutions. 
+                ##
+                ##  Must: 
+                ##      > Find basis unrestricted direction vector
+                ##      > Return (BFS, basis unrestricted direction vector, false)
+
+                directionVector = np.zeros(len(newBasicFeasibleSolution))
+
+                for j in range(len(basisDirectionVector)):
+
+                    directionVector[basis[j]] = basisDirectionVector[j]
+
+                return (newBasicFeasibleSolution, directionVector, False)
+
+                
+
+            else:
+                ##  
+                ##  now to pivot
+                ##  
+                exitIndex = -1
+
+                minimalRatio = np.inf
+
+                for j in range(len(basis)):
+
+                    if basisDirectionVector[j] < 0:
+
+                        if -1*(newBasicFeasibleSolution[basis[j]] / basisDirectionVector[j]) < minimalRatio:
+
+                            minimalRatio = -1*(newBasicFeasibleSolution[basis[j]] / basisDirectionVector[j])
+
+                            exitIndex = j
+
+                directionVector = np.zeros(len(newBasicFeasibleSolution))
+
+                for j in range(len(basisDirectionVector)):
+
+                    directionVector[basis[j]] = basisDirectionVector[j]
+
+                directionVector[exitIndex] = 1
+
+                for j in range(len(newBasicFeasibleSolution)):
+
+                    newBasicFeasibleSolution[j] += minimalRatio * directionVector[j]
+
+                ##
+                ##  Time to create new basis matrix. 
+                ##
+                augmentBasisMatrix = np.zeros((len(constraintMatrix), len(basis) + 1), dtype = float)
+
+                for j in range(len(inverseBasisMatrix)):
+
+                    for k in range(len(inverseBasisMatrix[0])):
+
+                        augmentBasisMatrix[j][k] = inverseBasisMatrix[j][k]
+
+                    augmentBasisMatrix[j][-1] = -1*basisDirectionVector[j]
+
+                augmentBasisMatrix = reduceAugmentedBasisMatrix(augmentBasisMatrix, exitIndex)                    
+
+                for j in range(len(inverseBasisMatrix)):
+
+                    for k in range(len(inverseBasisMatrix[0])):
+
+                        inverseBasisMatrix[j][k] = augmentBasisMatrix[j][k]
+
+                ##
+                ##  It is now time to update the basis. 
+                ##
+                basis[exitIndex] = enterIndex
+
+                basis.sort()
+
+                for j in range(len(basisCost)):
+
+                    basisCost[j] = costFunction[basis[j]]
+
+
+                priceVector = np.matmul(basisCost, inverseBasisMatrix)
+
+                for j in range(len(reducedCosts)):
+
+                    for k in range(len(constraintMatrix)):
+
+                        columnVector[k] = constraintMatrix[k][j]
+
+                    reducedCosts[j] = costFunction[j] - np.matmul(priceVector, columnVector)
+
+                ##
+                ##  Check termination condition: 
+                ##
+                solutionOptimal = True
+
+                for j in range(len(reducedCosts)):
+
+                    if reducedCosts[j] < 0:
+
+                        solutionOptimal = False
+
+                        enterIndex = j
+
+                if solutionOptimal:
+
+                    return (newBasicFeasibleSolution, np.matmul(costFunction, newBasicFeasibleSolution), solutionOptimal)
+
+##  
+##  Function Description: This function performs the revised simplex algorithm. 
+##  
+def revisedSimplexWithBlandsRuleDebug(constraintMatrix, costFunction, basis, basicFeasibleSolution):
+
+    basisMatrix = np.zeros((len(constraintMatrix), len(basis)))
+
+    for j in range(len(constraintMatrix)):
+        for k in range(len(basis)):
+
+            basisMatrix[j][k] = constraintMatrix[j][basis[k]]
+
+    print("Basis matrix")
+    print(basisMatrix)
+
+    basisFeasibleSolution = np.zeros(len(basis))
+
+    basisCost = np.zeros(len(basis))
+
+    for j in range(len(basis)):
+
+        basisFeasibleSolution[j] = basicFeasibleSolution[basis[j]]
+
+        basisCost[j] = costFunction[basis[j]]
+
+    print("Basis restricted basic feasible solution")
+    print(basicFeasibleSolution)
+
+    inverseBasisMatrix = np.linalg.inv(basisMatrix)
+
+    print("Inverse of basis matrix")
+    print(inverseBasisMatrix)
+
+    priceVector = np.matmul(basisCost, inverseBasisMatrix)
+
+    print("Price vector")
+    print(priceVector)
+
+    reducedCosts= np.zeros(len(costFunction))
+
+    columnVector = np.zeros(len(constraintMatrix))
+
+    for j in range(len(costFunction)):
+
+        for k in range(len(constraintMatrix)):
+
+            columnVector[k] = constraintMatrix[k][j]
+
+        reducedCosts[j] = costFunction[j] - np.matmul(priceVector, columnVector)
+
+    print("Reduced costs")
+    print(reducedCosts)
+
+    solutionOptimal = True
+
+    enterIndex = -1
+
+    for j in range(len(reducedCosts)):
+
+        if reducedCosts[j] < 0:
+
+            enterIndex = j
+
+            solutionOptimal = False
+
+    if solutionOptimal:
+
+        return (basicFeasibleSolution, np.matmul(costFunction, basicFeasibleSolution), solutionOptimal)
+    ##
+    ##  Literally all of the rest of the algorithm will be done in here. 
+    ##
+    else:
+
+        newBasicFeasibleSolution = basicFeasibleSolution.copy()
+
+        while not solutionOptimal:
+
+            for j in range(len(constraintMatrix)):
+
+                columnVector[j] = constraintMatrix[j][enterIndex]
+
+            basisDirectionVector = np.matmul(inverseBasisMatrix, columnVector)
+
+            print("Basis restricted direction vector")
+            print(basisDirectionVector)
+
+            for j in range(len(basis)):
+                basisDirectionVector[j] *= -1
+
+            solutionUnbounded = True
+
+            for j in range(len(basisDirectionVector)):
+
+                if basisDirectionVector[j] < 0:
+
+                    solutionUnbounded = False
+
+            if solutionUnbounded:
+                ##
+                ##  This is where I will return unbounded solutions. 
+                ##
+                ##  Must: 
+                ##      > Find basis unrestricted direction vector
+                ##      > Return (BFS, basis unrestricted direction vector, false)
+
+                directionVector = np.zeros(len(newBasicFeasibleSolution))
+
+                for j in range(len(basisDirectionVector)):
+
+                    directionVector[basis[j]] = basisDirectionVector[j]
+
+                return (newBasicFeasibleSolution, directionVector, False)
+
+                
+
+            else:
+                ##  
+                ##  now to pivot
+                ##  
+                exitIndex = -1
+
+                minimalRatio = np.inf
+
+                for j in range(len(basis)):
+
+                    if basisDirectionVector[j] < 0:
+
+                        if -1*(newBasicFeasibleSolution[basis[j]] / basisDirectionVector[j]) < minimalRatio:
+
+                            minimalRatio = -1*(newBasicFeasibleSolution[basis[j]] / basisDirectionVector[j])
+
+                            exitIndex = j
+
+                print("Minimum ratio")
+                print(minimalRatio)
+
+                directionVector = np.zeros(len(newBasicFeasibleSolution))
+
+                for j in range(len(basisDirectionVector)):
+
+                    directionVector[basis[j]] = basisDirectionVector[j]
+
+                directionVector[exitIndex] = 1
+
+                print("basis unrestricted direction vector")
+                print(directionVector)
+
+                for j in range(len(newBasicFeasibleSolution)):
+
+                    newBasicFeasibleSolution[j] += minimalRatio * directionVector[j]
+                
+                print("New basic feasible solution")
+                print(newBasicFeasibleSolution)
+
+                ##
+                ##  Time to create new basis matrix. 
+                ##
+                augmentBasisMatrix = np.zeros((len(constraintMatrix), len(basis) + 1), dtype = float)
+
+                for j in range(len(inverseBasisMatrix)):
+
+                    for k in range(len(inverseBasisMatrix[0])):
+
+                        augmentBasisMatrix[j][k] = inverseBasisMatrix[j][k]
+
+                    augmentBasisMatrix[j][-1] = -1*basisDirectionVector[j]
+
+                print("Augmented inverse basis matrix")
+                print(augmentBasisMatrix)
+
+                augmentBasisMatrix = reduceAugmentedBasisMatrix(augmentBasisMatrix, exitIndex)                    
+
+                print("Reduced augmented basis matrix")
+                print(augmentBasisMatrix)
+
+                for j in range(len(inverseBasisMatrix)):
+
+                    for k in range(len(inverseBasisMatrix[0])):
+
+                        inverseBasisMatrix[j][k] = augmentBasisMatrix[j][k]
+
+                print("new inverse basis matrix")
+                print(inverseBasisMatrix)
+
+                ##
+                ##  It is now time to update the basis. 
+                ##
+                basis[exitIndex] = enterIndex
+
+                basis.sort()
+
+                print("new basis")
+                print(basis)
+
+                for j in range(len(basisCost)):
+
+                    basisCost[j] = costFunction[basis[j]]
+
+                print("new basis restricted cost")
+                print(basisCost)
+
+                priceVector = np.matmul(basisCost, inverseBasisMatrix)
+
+                print("new price vector")
+                print(priceVector)
+
+                for j in range(len(reducedCosts)):
+
+                    for k in range(len(constraintMatrix)):
+
+                        columnVector[k] = constraintMatrix[k][j]
+
+                    reducedCosts[j] = costFunction[j] - np.matmul(priceVector, columnVector)
+
+                print("new reduced costs")
+                print(reducedCosts)
+
+                ##
+                ##  Check termination condition: 
+                ##
+                solutionOptimal = True
+
+                for j in range(len(reducedCosts)):
+
+                    if reducedCosts[j] < 0:
+
+                        solutionOptimal = False
+
+                        enterIndex = j
+
+                if solutionOptimal:
+
+                    return (newBasicFeasibleSolution, np.matmul(costFunction, newBasicFeasibleSolution), solutionOptimal)
+
+                

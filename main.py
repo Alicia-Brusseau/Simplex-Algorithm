@@ -2,105 +2,131 @@ import numpy as np
 import matrixFunctions
 import interfacingFunctions
 import graphs
-
-program = interfacingFunctions.linearProgram()
-
-program.createFromUserInputGeneralForm()
-
-print("Constraints:")
-print(program.constraintMatrix)
-print("Constraint Vector:")
-print(program.constraintVector)
-print("Cost Function: ")
-print(program.costFunction)
-
-print("Test of simplex method phase one program: ")
-print(matrixFunctions.simplexPhaseOne(program))
-
-
-'''constraintMatrix = np.array([[1, -1, 1, 0, 0], [1, 1, 0, 1, 0], [0, 1, 0, 0, 1]], dtype=float)
-cost = np.array([-1, 0, 0, 0, 0])
-BFS = np.array([0, 0, 3, 8, 4])
-basis = [2, 3, 4]
-
-print(matrixFunctions.revisedSimplexWithBlandRuleDebug(constraintMatrix, cost, basis, BFS))'''
+import pulp
+import tests
+import time
+import matplotlib.pyplot as plt
 
 '''
-constraintMatrix = np.array([[1, 2, 2, 1, 0, 0], [2, 1, 2, 0, 1, 0], [2, 2, 1, 0, 0, 1]])
+##  
+##  The following are the three numpy arrays used to create the linear programs represented by the given graphs: 
+##  
 
-costFunction = np.array([-10, -12, -12, 0, 0, 0])
+A1 = np.array([[1, 1, 1, 0, 0, 0, 0, 0, 0, 0], [-1, 0, 0, 1, 0, 0, 0, 0, 0, 0], [0, -1, 0, -1, 1, 0, 0, 0, 0, 0], [0, 0, -1, 0, -1, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 1, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 1, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 1, 0, 0 ], [0, 0, 0, 1, 0, 0, 0, 0, 1, 0], [0, 0, 0, 0, 1, 0, 0, 0, 0, 1]], dtype=float)
 
-BFS = np.array([0, 0, 0, 20, 20, 20])
+b1 = np.array([8, 0, -2, -6, 0, 0, 0, 0, 0], dtype=float)
 
-basis = [3, 4, 5]
+C1 = np.array([15, 4, 2, 8, 31, 0, 0, 0, 0, 0], dtype=float)
 
-print(matrixFunctions.simplexTableauWithBlandsRuleDebug(basis, BFS, constraintMatrix, costFunction))
+
+prob1 = pulp.LpProblem("graph_A", pulp.LpMinimize)
+
+x1 = [pulp.LpVariable(f"x{i}", lowBound = 0, cat = "pulp.LpContinuous") for i in range(len(A1[0]))]
+
+prob1 += pulp.lpSum(C1[j] * x1[j] for j in range(len(A1[0]))), "Total Cost"
+
+for j in range(len(A1)):
+    prob1 += pulp.lpSum(A1[j][k] * x1[k] for k in range(len(x1))) == b1[j], f"Constraint_{j}"
+
+
+prob1.solve()
+
+  
+print(f"Status: {pulp.LpStatus[prob1.status]}")
+print(f"Optimal x:", [x1[j].varValue for j in range(len(A1[0]))])
+print(f"Optimal Cost: ", pulp.value(prob1.objective))
+
+A2 = np.array([[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [-1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, -1, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, -1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]], dtype=float)
+
+b2 = np.array([8, 0, -2, -6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=float)
+
+C2 = np.array([15, 4, 2, 8, 31, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=float)
+
+prob2 = pulp.LpProblem("graph_B", pulp.LpMinimize)
+
+x2 = [pulp.LpVariable(f"x{i}", lowBound = 0, cat = "pulp.LpContinuous") for i in range(len(A2[0]))]
+
+prob2 += pulp.lpSum(C2[j] * x2[j] for j in range(len(A2[0]))), "Total Cost"
+
+for j in range(len(A2)):
+    prob2 += pulp.lpSum(A2[j][k] * x2[k] for k in range(len(x2))) == b2[j], f"Constraint_{j}"
+
+
+prob2.solve()
+
+  
+print(f"Status: {pulp.LpStatus[prob2.status]}")
+print(f"Optimal x:", [x2[j].varValue for j in range(len(A2[0]))])
+print(f"Optimal Cost: ", pulp.value(prob2.objective))
+
+A3 = np.array([[1, 0, 0, 1, 0, 0, 0, 0], [-1, 1, 0, 0, 0, 0, 0, 0], [0, -1, 1, 0, 0, 0, 0, 0], [0, 0, -1, -1, 0, 0, 0, 0], [1, 0, 0, 0, 1, 0, 0, 0], [0, 1, 0, 0, 0, 1, 0, 0], [0, 0, 1, 0, 0, 0, 1, 0], [0, 0, 0, 1, 0, 0, 0, 1]], dtype=float)
+
+b3 = np.array([16, 0, 0, -16, 3, 3, 3, 9], dtype=float)
+
+C3 = np.array([5, 5, 4, 16, 0, 0, 0, 0], dtype=float)
+
+prob3 = pulp.LpProblem("graph_B", pulp.LpMinimize)
+
+x3 = [pulp.LpVariable(f"x{i}", lowBound = 0, cat = "pulp.LpContinuous") for i in range(len(A3[0]))]
+
+prob3 += pulp.lpSum(C3[j] * x3[j] for j in range(len(A3[0]))), "Total Cost"
+
+for j in range(len(A3)):
+    prob3 += pulp.lpSum(A3[j][k] * x3[k] for k in range(len(x3))) == b3[j], f"Constraint_{j}"
+
+
+prob3.solve()
+
+  
+print(f"Status: {pulp.LpStatus[prob3.status]}")
+print(f"Optimal x:", [x3[j].varValue for j in range(len(A3[0]))])
+print(f"Optimal Cost: ", pulp.value(prob3.objective))
+
+
 '''
 
-'''augmentedBasisMatrix = np.array([[1, 2, 3, -4], [-2, 3, 1, 2], [4, -3, -2, 2]], dtype=float)
-
-reducedAugmentedBasisMatrix = matrixFunctions.reduceAugmentedBasisMatrix(augmentedBasisMatrix, 2)
-
-print("Augmented Basis Matrix:")
-print(augmentedBasisMatrix)
-print("Reduced Augmented Basis Matrix")
-print(reducedAugmentedBasisMatrix)'''
-
-
-'''tableau = matrixFunctions.createTableau(basis, BFS, constraintMatrix, costFunction)
-
-print(tableau)
-
-reducedTableau = matrixFunctions.reduceTableau(tableau, 3, 2)
-
-print(reducedTableau)'''
-
-""" G = graphs.graph()
-
-G.fromUserInput()
-
-print(G.edgeSet)
-
-print(G.edgeCount)
-
-print(G.incidenceMatrix)
-
-print(G.adjacencyMatrix)
-
-
-
-
 
 ##  
-##  We will now be testing the interfacing function default constructor for the linearProgram type. 
+##  This was intended to be the prompts which take in the user's input in order to 
+##  to create the specified graphs then which performs the required analysis with them. When this was
+##  attempted the functions designed to perform the simplex method in tableau form failed, which did not occur at 
+##  any point during testing. 
 ##  
+'''
+graph3 = graphs.graph()
 
-optimimationProblem = interfacingFunctions.linearProgram()
+graph3.fromUserInput()
 
-optimimationProblem.createProgramFromGraph(G)
+program3 = interfacingFunctions.linearProgram()
 
-print(optimimationProblem.constraintMatrix)
+program3.createProgramFromGraph(graph3)
 
-print(optimimationProblem.constraintVector)
+start = time.time()
 
-print(optimimationProblem.costFunction)
- """
-##  
-##  
-##  These were test variables for the standard simplex method function. 
-##  
-##  
+(basicFeasibleSolution, costOrDireciton, status, basis) = matrixFunctions.simplexPhaseOne(program3)
 
-##constraintMatrix = np.array([[1, -1, 1, 0], [1, 1, 0, 1]])
+if status == True:
 
-##costFunction = np.array([-2, -1, 0, 0])
+    matrixFunctions.simplexTableauWithBlandsRule(basis, basicFeasibleSolution, program3.constraintMatrix, program3.costFunction)
 
-##basis = [2, 3]
+end = time.time()
 
-##constraintVector = np.array([2, 6])
+print("Runtime: ", end - start)
+'''
 
-##initialBFS = np.array([0, 0, 2, 6])
+##
+##  Used to produce the graphs shown in the report. 
+##
+'''
+decisionVariablesCount = np.array([8, 10, 15])
 
-##solution = matrixFunctions.standardSimplexMethod(initialBFS, basis, constraintMatrix, constraintVector, costFunction)
+constraintCount = np.array([8, 9, 14])
 
-##print(solution)
+runtime = np.array([0.02, 0, 0])
+
+plt.scatter(constraintCount, runtime)
+plt.title("Scatter Plot: runtime vs number of constraints")
+plt.xlabel("Number of constraints")
+plt.ylabel("Runtime ")
+plt.show()
+'''
