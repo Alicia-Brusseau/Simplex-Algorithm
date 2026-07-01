@@ -335,15 +335,9 @@ def standardSimplexMethodPrint(initialBFS, initialBasis, constraintMatrix, const
 
             else:
                 ##  
-                ##  Unbounded solution: You must also return the direction vector 
-                ##  and where you are directioning from, but that can come later.   
-                ##
-                ##  
-                ##  It is now later: fuck, what do I do?
-                ##  
-                ##  Actually, this is probably fine as is. I'll just need to   
-                ##  test it. 
-                ##
+                ##  Unbounded solution:  
+                ##     
+                
                 return (False, bfs, basis, unitDirectionVector)
 
 
@@ -417,10 +411,6 @@ def standardSimplexMethodPrint(initialBFS, initialBasis, constraintMatrix, const
 ##
 ##  Function Description: This function performs the simplex tableau version of the simplex
 ##  algorithm.
-##
-##  Precondition: 
-##
-##  Postcondition: 
 ##
 def simplexTableauWithBlandsRule(basis, basicFeasibleSolution, constraintMatrix, costFunction):
     
@@ -621,10 +611,6 @@ def reduceTableau(tableau, row, column):
 ##
 ##  Function Description: This function performs the simplex tableau version of the simplex
 ##  algorithm.
-##
-##  Precondition: 
-##
-##  Postcondition: 
 ##
 def simplexTableauWithBlandsRuleDebug(basis, basicFeasibleSolution, constraintMatrix, costFunction):
     
@@ -1003,10 +989,6 @@ def simplexPhaseOneDebug(program : interfacingFunctions.linearProgram):
 ##  Function Description: This function performs the simplex tableau version of the simplex
 ##  algorithm.
 ##
-##  Precondition: 
-##
-##  Postcondition: 
-##
 def simplexTableauWithBlandsRuleBasisDebug(basis, basicFeasibleSolution, constraintMatrix, costFunction):
     
     BFS = basicFeasibleSolution.copy()
@@ -1205,7 +1187,7 @@ def revisedSimplexWithBlandsRule(constraintMatrix, costFunction, basis, basicFea
 
         return (basicFeasibleSolution, np.matmul(costFunction, basicFeasibleSolution), solutionOptimal)
     ##
-    ##  Literally all of the rest of the algorithm will be done in here. 
+    ##  All of the rest of the algorithm will be done in here. 
     ##
     else:
 
@@ -1279,7 +1261,7 @@ def revisedSimplexWithBlandsRule(constraintMatrix, costFunction, basis, basicFea
                     newBasicFeasibleSolution[j] += minimalRatio * directionVector[j]
 
                 ##
-                ##  Time to create new basis matrix. 
+                ##  Create new basis matrix. 
                 ##
                 augmentBasisMatrix = np.zeros((len(constraintMatrix), len(basis) + 1), dtype = float)
 
@@ -1407,7 +1389,7 @@ def revisedSimplexWithBlandsRuleDebug(constraintMatrix, costFunction, basis, bas
 
         return (basicFeasibleSolution, np.matmul(costFunction, basicFeasibleSolution), solutionOptimal)
     ##
-    ##  Literally all of the rest of the algorithm will be done in here. 
+    ##  All of the rest of the algorithm will be done in here. 
     ##
     else:
 
