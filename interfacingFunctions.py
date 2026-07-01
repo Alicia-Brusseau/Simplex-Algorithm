@@ -552,9 +552,7 @@ def solveCurrencyExchange(program : linearProgram):
 
 
 
-##  
-##  Function Description: 
-##  
+
 def createMatrixFromUserInput(): 
     ##  
     ##  This can, and should, have more type safety related exceptions. That will come 
@@ -594,9 +592,7 @@ def createMatrixFromUserInput():
 
     return matrix
 
-##
-##  Function descripion: 
-##
+
 def createMatrixFromUserInput(rowCount, columnCount):
 
     if rowCount <= 0:
@@ -623,10 +619,6 @@ def createMatrixFromUserInput(rowCount, columnCount):
 ##  Function Description: This function takes the length of a vector as an input from the 
 ##  user, prompts the user for the coefficients of the vector as arguments, then returns 
 ##  the vector. 
-##
-##  Precondition: 
-##
-##  Postcondition:  
 ##
 def createVector(length):
 
